@@ -1,0 +1,35 @@
+def aa_test(data1: pd.Series, data2: pd.Series, sample_size: int, 
+            simulations: int=100_000, visualize: bool=False,
+            alpha=0.05):
+    ''' 
+    A/A test function
+    :param data1: data of control1 group
+    :param data2: data of control2 group
+    :param sample_size: size of sampling groups
+    :param simulations: amount of simulations
+    :param visualize: turn on/off visualization part
+    :return: False Positive Rate
+    '''
+    res = []
+
+    for _ in tqdm(range(simulations)):
+        s1 = data1.sample(sample_size, replace=False).values
+        s2 = data2.sample(sample_size, replace=False).values
+        res.append(stats.ttest_ind(s1, s2, equal_var=False)[1])
+
+    if visualize:
+        plt.hist(res, bins=20)
+        plt.xlabel('pvalues')
+        plt.ylabel('frequency')
+        plt.title('Histogram of ttest A/A simulations')
+        plt.show()
+
+    return sum(np.array(res) < alpha) / simulations
+
+ev = pd.merge(
+    data[['group_name', 'custom_id']].drop_duplicates(),
+    data[(data['event_name'] == 'game_start')].groupby(['group_name', 'custom_id']).agg({'event_name':'count'}).reset_index(),
+    on=['group_name', 'custom_id'], how='left'
+).fillna(0)
+
+aa_test(ev[ev['group_name'] == 'control']['event_name'], ev[ev['group_name'] == 'control_copy']['event_name'], sample_size=2300, visualize=True)
